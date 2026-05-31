@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Upload, X, FileText, Loader2, Download, CheckCircle } from 'lucide-react';
+import { API_BASE } from '../config';
 
 const TextTool = ({ onBack }) => {
   const [file, setFile] = useState(null);
@@ -24,7 +25,7 @@ const TextTool = ({ onBack }) => {
     formData.append('file', file);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/pdf/text-to-pdf', formData);
+      const response = await axios.post(`${API_BASE}/api/pdf/text-to-pdf`, formData);
       setResult(response.data);
       setStatus('success');
     } catch (error) {
@@ -35,7 +36,7 @@ const TextTool = ({ onBack }) => {
 
   const downloadResult = () => {
     if (!result) return;
-    window.open(`http://localhost:5000${result.downloadUrl}`, '_blank');
+    window.open(`${API_BASE}${result.downloadUrl}`, '_blank');
   };
 
   return (
@@ -108,7 +109,7 @@ const TextTool = ({ onBack }) => {
             <p style={{ marginBottom: '2rem' }}>{result.fileName}</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
               <a 
-                href={`http://localhost:5000${result.downloadUrl}`} 
+                href={`${API_BASE}${result.downloadUrl}`} 
                 className="btn btn-primary" 
                 style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', textDecoration: 'none' }}
                 download

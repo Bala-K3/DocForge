@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, Image as ImageIcon, Loader2, Download, CheckCircle } from 'lucide-react';
+import { API_BASE } from '../config';
 
 const ConvertTool = ({ onBack }) => {
   const [files, setFiles] = useState([]);
@@ -27,7 +28,7 @@ const ConvertTool = ({ onBack }) => {
     files.forEach(file => formData.append('images', file));
 
     try {
-      const response = await axios.post('http://localhost:5000/api/pdf/image-to-pdf', formData);
+      const response = await axios.post(`${API_BASE}/api/pdf/image-to-pdf`, formData);
       setResult(response.data);
       setStatus('success');
     } catch (error) {
@@ -38,7 +39,7 @@ const ConvertTool = ({ onBack }) => {
 
   const downloadResult = () => {
     if (!result) return;
-    window.open(`http://localhost:5000${result.downloadUrl}`, '_blank');
+    window.open(`${API_BASE}${result.downloadUrl}`, '_blank');
   };
 
   return (
@@ -138,7 +139,7 @@ const ConvertTool = ({ onBack }) => {
             <p style={{ marginBottom: '2rem' }}>{result.fileName}</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
               <a 
-                href={`http://localhost:5000${result.downloadUrl}`} 
+                href={`${API_BASE}${result.downloadUrl}`} 
                 className="btn btn-primary" 
                 style={{ background: 'linear-gradient(135deg, var(--secondary), #f43f5e)', textDecoration: 'none' }}
                 download
