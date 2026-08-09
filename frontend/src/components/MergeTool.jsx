@@ -1,13 +1,14 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, X, File, Loader2, Download, CheckCircle } from 'lucide-react';
+import { Upload, X, File, Loader2, Download, CheckCircle, AlertCircle, Shield } from 'lucide-react';
 import { API_BASE } from '../config';
 
 const MergeTool = ({ onBack }) => {
   const [files, setFiles] = useState([]);
   const [status, setStatus] = useState('idle'); // idle, uploading, success, error
-  const [result, setResult] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [result, setResult] = useState(null); // { blobUrl, fileName }
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -24,22 +25,44 @@ const MergeTool = ({ onBack }) => {
     if (files.length < 2) return;
 
     setStatus('uploading');
+    setErrorMessage('');
     const formData = new FormData();
     files.forEach(file => formData.append('files', file));
 
     try {
-      const response = await axios.post(`${API_BASE}/api/pdf/merge`, formData);
-      setResult(response.data);
+      const response = await axios.post(`${API_BASE}/api/pdf/merge`, formData, {
+        responseType: 'blob'
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      setResult({
+        blobUrl,
+        fileName: `merged_${files[0].name.replace(/\.pdf$/i, '')}_and_more.pdf`
+      });
       setStatus('success');
     } catch (error) {
       console.error(error);
+      let msg = 'Failed to merge PDF files. Please try again.';
+      if (error.response && error.response.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const json = JSON.parse(text);
+          if (json.message) msg = json.message;
+        } catch {}
+      } else if (error.response?.data?.message) {
+        msg = error.response.data.message;
+      }
+      setErrorMessage(msg);
       setStatus('error');
     }
   };
 
-  const downloadResult = () => {
-    if (!result) return;
-    window.open(`${API_BASE}${result.downloadUrl}`, '_blank');
+  const handleReset = () => {
+    setFiles([]);
+    setStatus('idle');
+    setResult(null);
+    setErrorMessage('');
   };
 
   return (
@@ -53,7 +76,7 @@ const MergeTool = ({ onBack }) => {
 
       <div className="glass-card">
         <h2 style={{ marginBottom: '1rem' }}>Merge PDF Files</h2>
-        <p style={{ marginBottom: '2rem' }}>Combine multiple PDF files into a single document.</p>
+        <p style={{ marginBottom: '2rem' }}>Combine multiple PDF files into a single document with 100% in-memory processing.</p>
 
         {status === 'idle' && (
           <>
@@ -113,6 +136,19 @@ const MergeTool = ({ onBack }) => {
             >
               Merge PDF ({files.length})
             </button>
+
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '0.5rem', 
+              color: 'var(--text-muted)', 
+              fontSize: '0.8rem',
+              marginTop: '1rem' 
+            }}>
+              <Shield size={14} color="var(--primary)" />
+              <span>Zero-Storage: Documents are merged in RAM and never stored on disk.</span>
+            </div>
           </>
         )}
 
@@ -120,25 +156,25 @@ const MergeTool = ({ onBack }) => {
           <div style={{ textAlign: 'center', padding: '4rem 0' }}>
             <Loader2 size={64} className="spin" color="var(--primary)" style={{ marginBottom: '1.5rem', animation: 'spin 2s linear infinite' }} />
             <h3>Processing your documents...</h3>
-            <p>This may take a few seconds depending on the file size.</p>
+            <p>Merging files directly in memory.</p>
           </div>
         )}
 
-        {status === 'success' && (
+        {status === 'success' && result && (
           <div style={{ textAlign: 'center', padding: '4rem 0' }}>
             <CheckCircle size={64} color="var(--success)" style={{ marginBottom: '1.5rem' }} />
             <h3>Your PDF is ready!</h3>
-            <p style={{ marginBottom: '2rem' }}>{result.fileName}</p>
+            <p style={{ marginBottom: '2rem', color: 'var(--text-muted)' }}>{result.fileName}</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
               <a 
-                href={`${API_BASE}${result.downloadUrl}`} 
+                href={result.blobUrl} 
+                download={result.fileName}
                 className="btn btn-primary"
-                style={{ textDecoration: 'none' }}
-                download
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
               >
-                <Download size={20} /> Download PDF
+                <Download size={20} /> Download Merged PDF
               </a>
-              <button className="btn btn-outline" onClick={() => { setFiles([]); setStatus('idle'); }}>
+              <button className="btn btn-outline" onClick={handleReset}>
                 Process more
               </button>
             </div>
@@ -147,9 +183,9 @@ const MergeTool = ({ onBack }) => {
 
         {status === 'error' && (
           <div style={{ textAlign: 'center', padding: '4rem 0' }}>
-            <X size={64} color="var(--error)" style={{ marginBottom: '1.5rem' }} />
+            <AlertCircle size={64} color="var(--error)" style={{ marginBottom: '1.5rem' }} />
             <h3>Something went wrong</h3>
-            <p style={{ marginBottom: '2rem' }}>We couldn't process your request. Please try again.</p>
+            <p style={{ marginBottom: '2rem' }}>{errorMessage || "We couldn't process your request. Please try again."}</p>
             <button className="btn btn-primary" onClick={() => setStatus('idle')}>
               Try Again
             </button>

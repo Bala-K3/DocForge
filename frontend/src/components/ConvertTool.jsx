@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, X, Image as ImageIcon, Loader2, Download, CheckCircle } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Loader2, Download, CheckCircle, AlertCircle, Shield } from 'lucide-react';
 import { API_BASE } from '../config';
 
 const ConvertTool = ({ onBack }) => {
   const [files, setFiles] = useState([]);
   const [status, setStatus] = useState('idle');
+  const [errorMessage, setErrorMessage] = useState('');
   const [result, setResult] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -24,22 +25,44 @@ const ConvertTool = ({ onBack }) => {
     if (files.length === 0) return;
 
     setStatus('uploading');
+    setErrorMessage('');
     const formData = new FormData();
     files.forEach(file => formData.append('images', file));
 
     try {
-      const response = await axios.post(`${API_BASE}/api/pdf/image-to-pdf`, formData);
-      setResult(response.data);
+      const response = await axios.post(`${API_BASE}/api/pdf/image-to-pdf`, formData, {
+        responseType: 'blob'
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      setResult({
+        blobUrl,
+        fileName: `converted_${files.length}_images.pdf`
+      });
       setStatus('success');
     } catch (error) {
       console.error(error);
+      let msg = 'Conversion failed. Please ensure your images are valid formats.';
+      if (error.response && error.response.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const json = JSON.parse(text);
+          if (json.message) msg = json.message;
+        } catch {}
+      } else if (error.response?.data?.message) {
+        msg = error.response.data.message;
+      }
+      setErrorMessage(msg);
       setStatus('error');
     }
   };
 
-  const downloadResult = () => {
-    if (!result) return;
-    window.open(`${API_BASE}${result.downloadUrl}`, '_blank');
+  const handleReset = () => {
+    setFiles([]);
+    setStatus('idle');
+    setResult(null);
+    setErrorMessage('');
   };
 
   return (
@@ -53,7 +76,7 @@ const ConvertTool = ({ onBack }) => {
 
       <div className="glass-card">
         <h2 style={{ marginBottom: '1rem' }}>Image to PDF</h2>
-        <p style={{ marginBottom: '2rem' }}>Convert your JPG, PNG, and other images to a single PDF document.</p>
+        <p style={{ marginBottom: '2rem' }}>Convert your JPG, PNG, and WebP images to a single PDF document in-memory.</p>
 
         {status === 'idle' && (
           <>
@@ -121,6 +144,19 @@ const ConvertTool = ({ onBack }) => {
             >
               Convert to PDF ({files.length})
             </button>
+
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '0.5rem', 
+              color: 'var(--text-muted)', 
+              fontSize: '0.8rem',
+              marginTop: '1rem' 
+            }}>
+              <Shield size={14} color="var(--secondary)" />
+              <span>Zero-Storage: Images are transformed entirely in memory.</span>
+            </div>
           </>
         )}
 
@@ -128,25 +164,25 @@ const ConvertTool = ({ onBack }) => {
           <div style={{ textAlign: 'center', padding: '4rem 0' }}>
             <Loader2 size={64} color="var(--secondary)" style={{ marginBottom: '1.5rem', animation: 'spin 2s linear infinite' }} />
             <h3>Creating your PDF...</h3>
-            <p>Optimizing images and generating document.</p>
+            <p>Optimizing images and generating document in memory.</p>
           </div>
         )}
 
-        {status === 'success' && (
+        {status === 'success' && result && (
           <div style={{ textAlign: 'center', padding: '4rem 0' }}>
             <CheckCircle size={64} color="var(--success)" style={{ marginBottom: '1.5rem' }} />
             <h3>Conversion Complete!</h3>
-            <p style={{ marginBottom: '2rem' }}>{result.fileName}</p>
+            <p style={{ marginBottom: '2rem', color: 'var(--text-muted)' }}>{result.fileName}</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
               <a 
-                href={`${API_BASE}${result.downloadUrl}`} 
+                href={result.blobUrl} 
+                download={result.fileName}
                 className="btn btn-primary" 
-                style={{ background: 'linear-gradient(135deg, var(--secondary), #f43f5e)', textDecoration: 'none' }}
-                download
+                style={{ background: 'linear-gradient(135deg, var(--secondary), #f43f5e)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
               >
                 <Download size={20} /> Download PDF
               </a>
-              <button className="btn btn-outline" onClick={() => { setFiles([]); setStatus('idle'); }}>
+              <button className="btn btn-outline" onClick={handleReset}>
                 Convert more
               </button>
             </div>
@@ -155,9 +191,9 @@ const ConvertTool = ({ onBack }) => {
 
         {status === 'error' && (
           <div style={{ textAlign: 'center', padding: '4rem 0' }}>
-            <X size={64} color="var(--error)" style={{ marginBottom: '1.5rem' }} />
+            <AlertCircle size={64} color="var(--error)" style={{ marginBottom: '1.5rem' }} />
             <h3>Conversion failed</h3>
-            <p style={{ marginBottom: '2rem' }}>Please ensure your images are valid formats.</p>
+            <p style={{ marginBottom: '2rem' }}>{errorMessage || 'Please ensure your images are valid formats.'}</p>
             <button className="btn btn-primary" onClick={() => setStatus('idle')}>
               Try Again
             </button>

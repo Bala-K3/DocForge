@@ -47,17 +47,22 @@ const Home = ({ onSelectTool }) => {
           transition={{ duration: 0.5 }}
         >
           <div style={{ 
-            display: 'inline-block', 
-            padding: '6px 16px', 
-            borderRadius: '20px', 
-            background: 'rgba(99, 102, 241, 0.1)', 
-            color: 'var(--primary)',
+            display: 'inline-flex', 
+            alignItems: 'center',
+            gap: '0.65rem',
+            padding: '6px 18px', 
+            borderRadius: '24px', 
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.15))', 
+            color: '#f8fafc',
             fontSize: '0.875rem',
             fontWeight: '600',
-            marginBottom: '1.5rem',
-            border: '1px solid rgba(99, 102, 241, 0.2)'
+            marginBottom: '2rem',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            boxShadow: '0 4px 20px rgba(99, 102, 241, 0.2)',
+            backdropFilter: 'blur(8px)'
           }}>
-            Powerful Document Processing
+            <img src="/logo.svg" alt="DocForge" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+            <span>Powerful Document Processing</span>
           </div>
           <h1>The Ultimate PDF Toolset</h1>
           <p style={{ fontSize: '1.25rem', marginBottom: '3rem' }}>
